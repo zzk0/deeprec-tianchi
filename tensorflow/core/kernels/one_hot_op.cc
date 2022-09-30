@@ -24,6 +24,7 @@ limitations under the License.
 
 #include "tensorflow/core/kernels/one_hot_op.h"
 
+#include <iostream>
 #include <memory>
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -73,6 +74,12 @@ class OneHotOp : public OpKernel {
                 errors::InvalidArgument("off_value must be a scalar, but got: ",
                                         off_value.shape().DebugString()));
 
+    // if (axis_ != -1) {
+    //   std::cout << "axis != -1" << std::endl;
+    //   int a;
+    //   std::cin >> a;
+    //   std::cout << a << std::endl;
+    // }
     const int axis = (axis_ == -1) ? indices_dims : axis_;
 
     // The one-hot dimension.
@@ -95,29 +102,50 @@ class OneHotOp : public OpKernel {
 
     Tensor* output;
     OP_REQUIRES_OK(ctx, ctx->allocate_output(0, output_shape, &output));
+    // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    memset(output->data(), 0, output_shape.num_elements() * sizeof(T));
+    // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    // std::cout << "Memset Time difference = " << std::chrono::duration_cast<std::chrono::nanoseconds> (end - begin).count() << "[ns]" << std::endl;
 
-    if (output_shape.num_elements() > 0) {
-      // prefix_dim_size == # of elements before the axis
-      // depth_v == # of elements per axis
-      // suffix_dim_size == # of elements after the axis
-      int64 prefix_dim_size = 1;
-      for (int i = 0; i < axis; ++i) {
-        prefix_dim_size *= indices_shape.dim_size(i);
-      }
-      int64 suffix_dim_size = indices_shape.num_elements() / prefix_dim_size;
-
-      // Split indices into matrix of size prefix_dim_size x suffix_dim_size
-      auto indices_t =
-          indices.shaped<TI, 2>({prefix_dim_size, suffix_dim_size});
-      // Split output into 3-Tensor of size:
-      //   prefix_dim_size x depth x suffix_dim_size.
-      auto output_t =
-          output->shaped<T, 3>({prefix_dim_size, depth_v, suffix_dim_size});
-
-      functor::OneHot<Device, T, TI>::Compute(ctx->eigen_device<Device>(),
-                                              indices_t, on_value_t,
-                                              off_value_t, &output_t);
+    int64_t* indices_dptr = (int64_t*) indices.data();
+    float* out_dptr = (float*) output->data();
+    for (size_t i = 0; i < indices.NumElements(); ++i) {
+      const int64_t idx = indices_dptr[i];
+      out_dptr[i * depth_v + idx] = 1;
     }
+
+    // std::cout << "type: " << typeid(T).name() << std::endl;
+    // std::cout << "output_shape.num_elements(): " << output_shape.num_elements() << std::endl;
+    // std::cout << "in out shape num_elements(): " << on_value.shape().num_elements() << " " 
+    //           << off_value.shape().num_elements() << std::endl;
+    // std::cout << axis_ << " " << depth_v << std::endl;
+    // std::cout << indices.DebugString() << std::endl;
+    // std::cout << depth.DebugString() << std::endl;
+    // std::cout << on_value.DebugString() << std::endl;
+    // std::cout << off_value.DebugString() << std::endl;
+
+    // if (output_shape.num_elements() > 0) {
+    //   // prefix_dim_size == # of elements before the axis
+    //   // depth_v == # of elements per axis
+    //   // suffix_dim_size == # of elements after the axis
+    //   int64 prefix_dim_size = 1;
+    //   for (int i = 0; i < axis; ++i) {
+    //     prefix_dim_size *= indices_shape.dim_size(i);
+    //   }
+    //   int64 suffix_dim_size = indices_shape.num_elements() / prefix_dim_size;
+
+    //   // Split indices into matrix of size prefix_dim_size x suffix_dim_size
+    //   auto indices_t =
+    //       indices.shaped<TI, 2>({prefix_dim_size, suffix_dim_size});
+    //   // Split output into 3-Tensor of size:
+    //   //   prefix_dim_size x depth x suffix_dim_size.
+    //   auto output_t =
+    //       output->shaped<T, 3>({prefix_dim_size, depth_v, suffix_dim_size});
+
+    //   functor::OneHot<Device, T, TI>::Compute(ctx->eigen_device<Device>(),
+    //                                           indices_t, on_value_t,
+    //                                           off_value_t, &output_t);
+    // }
   }
 
  private:
