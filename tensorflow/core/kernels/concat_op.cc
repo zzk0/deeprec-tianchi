@@ -574,11 +574,11 @@ class FusedConcatCastOp : public OpKernel {
  private:
 #if INTEL_MKL
   static void castElements(Eigen::bfloat16* dst, const float* src, ptrdiff_t size) {
-    dnnl::cvt_float_to_bfloat16((dnnl_bfloat16_t *)dst, (const float *)src, size);
+    dnnl::custom_cvt_float_to_bfloat16((dnnl_bfloat16_t *)dst, (const float *)src, size);
   }
 
   static void castElements(float* dst, const Eigen::bfloat16* src, ptrdiff_t size) {
-    dnnl::cvt_bfloat16_to_float((float *)dst, (const dnnl_bfloat16_t *)src, size);
+    dnnl::custom_cvt_bfloat16_to_float((float *)dst, (const dnnl_bfloat16_t *)src, size);
   }
 #endif  // INTEL_MKL
 

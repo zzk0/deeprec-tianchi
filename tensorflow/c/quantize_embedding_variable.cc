@@ -62,7 +62,7 @@ void ConvertToBF16Value(const Tensor& in_tensor, const string name,
   auto out_data = out_tensor.flat<bfloat16>();
   int64 data_size = out_tensor.NumElements();
 #if TEL_MKL
-  dnnl::cvt_float_to_bfloat16((dnnl_bfloat16_t*)out_data.data(),
+  dnnl::custom_cvt_float_to_bfloat16((dnnl_bfloat16_t*)out_data.data(),
                               (const float*)in_data.data(), data_size);
 #else
   FloatToBFloat16(in_data.data(), out_data.data(), data_size);
